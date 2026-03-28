@@ -4,15 +4,27 @@ on:
     branches: [ cicd, main ] # Runs on your feature branch too
   workflow_dispatch: # Allows you to trigger it manually from the UI
 
+permissions:
+  id-token: write # This is REQUIRED for OIDC to request the JWT
+  contents: read  # This is required to checkout the code
+
 jobs:
-  test-job:
+  ConnectAndBuildToAWS:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
+      
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::192347447415:role/GitHubActions-SAM-Deployer-Role
+          aws-region: us-east-1
 
-      - name: Check SAM version
-        run: sam --version
+      - name: Verify Identity
+        run: aws sts get-caller-identity
 
-      - name: List files
-        run: ls -R
+      - name: Check Environment
+        run: |
+          sam --version
+          ls -R
