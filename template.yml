@@ -2,7 +2,7 @@ Transform: AWS::Serverless-2016-10-31
 Globals:
   Function:
     CodeUri: ./src
-    Runtime: nodejs20.x
+    Runtime: nodejs24.x
     Timeout: 5
     MemorySize: 128
     Tags:
