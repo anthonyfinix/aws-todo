@@ -1,0 +1,36 @@
+Transform: AWS::Serverless-2016-10-31
+Globals:
+  Function:
+    CodeUri: ./src
+    Runtime: nodejs20.x
+    Timeout: 5
+    MemorySize: 128
+    Tags:
+      project: practice
+Resources:
+  # 1. The Table (SAM Resource)
+  TodoTable:
+    Type: AWS::Serverless::SimpleTable
+    Properties:
+      Tags:
+        project: practice
+      PrimaryKey:
+        Name: id
+        Type: String
+  # 2. Get Todos
+  TodoFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref TodoTable
+      Handler: getTodos.handler
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref TodoTable
+      Events:
+        GetTodos:
+          Type: HttpApi
+          Properties:
+            Path: /todos
+            Method: GET
