@@ -9,31 +9,31 @@ Globals:
       project: practice
 Resources:
   # 1. The Table (SAM Resource)
-  # TodoTable:
-  #   Type: AWS::Serverless::SimpleTable
-  #   Properties:
-  #     Tags:
-  #       project: practice
-  #     PrimaryKey:
-  #       Name: id
-  #       Type: String
-  # # 2. Get Todos
-  # TodoFunction:
-  #   Type: AWS::Serverless::Function
-  #   Properties:
-  #     Environment:
-  #       Variables:
-  #         TABLE_NAME: !Ref TodoTable
-  #     Handler: getTodos.handler
-  #     Policies:
-  #       - DynamoDBCrudPolicy:
-  #           TableName: !Ref TodoTable
-  #     Events:
-  #       GetTodos:
-  #         Type: HttpApi
-  #         Properties:
-  #           Path: /todos
-  #           Method: GET
+  TodoTable:
+    Type: AWS::Serverless::SimpleTable
+    Properties:
+      Tags:
+        project: practice
+      PrimaryKey:
+        Name: id
+        Type: String
+  # 2. Get Todos
+  GetTodosFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref TodoTable
+          ALLOWED_ORIGIN: !GetAtt UiBucket.WebsiteURL
+      Handler: getTodos.handler
+      Role: !GetAtt GetTodosFunctionRole.Arn
+      Events:
+        GetTodos:
+          Type: HttpApi
+          Properties:
+            Path: /todos
+            Method: GET
+            ApiId: !Ref MyApi
   UiBucket:
     Type: AWS::S3::Bucket
     Properties:
@@ -58,6 +58,46 @@ Resources:
             Principal: '*'
             Action: 's3:GetObject'
             Resource: !Sub 'arn:aws:s3:::${UiBucket}/*'
+
+  MyApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      CorsConfiguration:
+        AllowOrigins:
+          - !GetAtt UiBucket.WebsiteURL
+        AllowMethods:
+          - GET
+          - OPTIONS
+        AllowHeaders:
+          - Content-Type
+  
+  GetTodosFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Policies:
+        - PolicyName: TodoFunctionTableScan
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:Scan
+                Resource: !GetAtt TodoTable.Arn
+              - Effect: Allow      
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: "arn:aws:logs:*:*:*"
 
 Outputs:
   WebsiteURL:

@@ -17,12 +17,14 @@ permissions:
   id-token: write # This is REQUIRED for OIDC to request the JWT
   contents: read  # This is required to checkout the code
 
+env:
+  STACK_NAME: practice-todo-app
+  AWS_REGION: us-east-1
+
 jobs:
   DeployApp:
     if: github.event.inputs.action != 'destroy'
     runs-on: ubuntu-latest
-    env:
-      STACK_NAME: practice-todo-app
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -31,7 +33,7 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: arn:aws:iam::192347447415:role/GitHubActions-SAM-Deployer-Role
-          aws-region: us-east-1
+          aws-region: ${{ env.AWS_REGION }}
 
       - name: Verify Identity
         run: aws sts get-caller-identity
@@ -69,7 +71,7 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: arn:aws:iam::192347447415:role/GitHubActions-SAM-Deployer-Role
-          aws-region: us-east-1
+          aws-region: ${{ env.AWS_REGION }}
 
       - name: Empty S3 Bucket
         run: |
