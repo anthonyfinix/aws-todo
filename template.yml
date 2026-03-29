@@ -9,28 +9,60 @@ Globals:
       project: practice
 Resources:
   # 1. The Table (SAM Resource)
-  TodoTable:
-    Type: AWS::Serverless::SimpleTable
+  # TodoTable:
+  #   Type: AWS::Serverless::SimpleTable
+  #   Properties:
+  #     Tags:
+  #       project: practice
+  #     PrimaryKey:
+  #       Name: id
+  #       Type: String
+  # # 2. Get Todos
+  # TodoFunction:
+  #   Type: AWS::Serverless::Function
+  #   Properties:
+  #     Environment:
+  #       Variables:
+  #         TABLE_NAME: !Ref TodoTable
+  #     Handler: getTodos.handler
+  #     Policies:
+  #       - DynamoDBCrudPolicy:
+  #           TableName: !Ref TodoTable
+  #     Events:
+  #       GetTodos:
+  #         Type: HttpApi
+  #         Properties:
+  #           Path: /todos
+  #           Method: GET
+  UiBucket:
+    Type: AWS::S3::Bucket
     Properties:
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: false
+        BlockPublicPolicy: false
+        IgnorePublicAcls: false
+        RestrictPublicBuckets: false
+      WebsiteConfiguration:
+        IndexDocument: index.html
       Tags:
-        project: practice
-      PrimaryKey:
-        Name: id
-        Type: String
-  # 2. Get Todos
-  TodoFunction:
-    Type: AWS::Serverless::Function
+        - Key: project
+          Value: practice
+  UiBucketPolicy:
+    Type: AWS::S3::BucketPolicy
     Properties:
-      Environment:
-        Variables:
-          TABLE_NAME: !Ref TodoTable
-      Handler: getTodos.handler
-      Policies:
-        - DynamoDBCrudPolicy:
-            TableName: !Ref TodoTable
-      Events:
-        GetTodos:
-          Type: HttpApi
-          Properties:
-            Path: /todos
-            Method: GET
+      Bucket: !Ref UiBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: '*'
+            Action: 's3:GetObject'
+            Resource: !Sub 'arn:aws:s3:::${UiBucket}/*'
+
+Outputs:
+  WebsiteURL:
+    Value: !GetAtt UiBucket.WebsiteURL
+    Description: "URL for the hosted UI"
+  UiBucketName:
+    Value: !Ref UiBucket
+    Description: "The name of the S3 bucket for the UI"

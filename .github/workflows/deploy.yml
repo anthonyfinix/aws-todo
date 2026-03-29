@@ -3,18 +3,30 @@ on:
   push:
     branches: [ cicd, main ] # Runs on your feature branch too
   workflow_dispatch: # Allows you to trigger it manually from the UI
+    inputs:
+      action:
+        description: 'Choose action'
+        required: true
+        default: 'deploy'
+        type: choice
+        options:
+          - deploy
+          - destroy
 
 permissions:
   id-token: write # This is REQUIRED for OIDC to request the JWT
   contents: read  # This is required to checkout the code
 
 jobs:
-  ConnectAndBuildToAWS:
+  DeployApp:
+    if: github.event.inputs.action != 'destroy'
     runs-on: ubuntu-latest
+    env:
+      STACK_NAME: practice-todo-app
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -28,3 +40,43 @@ jobs:
         run: |
           sam --version
           ls -R
+      
+      - name: SAM Deploy
+        run: |
+          sam deploy --no-confirm-changeset --no-fail-on-empty-changeset \
+            --stack-name ${{ env.STACK_NAME }} \
+            --capabilities CAPABILITY_IAM \
+            --resolve-s3
+      
+      - name: Get Bucket Name and Sync
+        run: |
+          OUTPUTS=$(aws cloudformation describe-stacks --stack-name ${{ env.STACK_NAME }} --query "Stacks[0].Outputs")
+          BUCKET_NAME=$(echo $OUTPUTS | jq -r '.[] | select(.OutputKey=="UiBucketName") | .OutputValue')
+          SITE_URL=$(echo $OUTPUTS | jq -r '.[] | select(.OutputKey=="WebsiteURL") | .OutputValue')
+          
+          aws s3 sync ./web s3://$BUCKET_NAME --delete
+          echo "--------------------------------------------------"
+          echo "DEPLOYMENT SUCCESSFUL!"
+          echo "Your website is live at: $SITE_URL"
+          echo "--------------------------------------------------"
+  Cleanup:
+    if: github.event.inputs.action == 'destroy'
+    runs-on: ubuntu-latest
+    env:
+      STACK_NAME: practice-todo-app
+    steps:
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::192347447415:role/GitHubActions-SAM-Deployer-Role
+          aws-region: us-east-1
+
+      - name: Empty S3 Bucket
+        run: |
+          BUCKET_NAME=$(aws cloudformation describe-stacks --stack-name ${{ env.STACK_NAME }} --query "Stacks[0].Outputs[?OutputKey=='UiBucketName'].OutputValue" --output text)
+          if [ "$BUCKET_NAME" != "None" ]; then
+            aws s3 rm s3://$BUCKET_NAME --recursive
+          fi
+
+      - name: Delete Stack
+        run: sam delete --stack-name ${{ env.STACK_NAME }} --no-prompts --region us-east-1
