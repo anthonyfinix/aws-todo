@@ -81,7 +81,7 @@ function App() {
             {todos.map((todo) => (
               <li key={todo.id} style={{ listStyle: 'none', padding: '10px', borderBottom: '1px solid #ddd' }}>
                 <input type="checkbox" checked={todo.completed} readOnly />
-                <span style={{ marginLeft: '10px' }}>{todo.text}</span>
+                <span style={{ marginLeft: '10px' }}>{todo.name}</span>
               </li>
             ))}
           </ul>
