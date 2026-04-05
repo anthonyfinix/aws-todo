@@ -34,14 +34,6 @@ jobs:
         with:
           role-to-assume: arn:aws:iam::192347447415:role/GitHubActions-SAM-Deployer-Role
           aws-region: ${{ env.AWS_REGION }}
-
-      - name: Verify Identity
-        run: aws sts get-caller-identity
-
-      - name: Check Environment
-        run: |
-          sam --version
-          ls -R
       
       - name: SAM Deploy
         run: |
@@ -51,17 +43,35 @@ jobs:
             --resolve-s3 \
             --region ${{ env.AWS_REGION }}
       
-      - name: Get Bucket Name and Sync
+      - name: Get Stack Outputs
         run: |
-          OUTPUTS=$(aws cloudformation describe-stacks --stack-name ${{ env.STACK_NAME }} --query "Stacks[0].Outputs")
-          BUCKET_NAME=$(echo $OUTPUTS | jq -r '.[] | select(.OutputKey=="UiBucketName") | .OutputValue')
-          SITE_URL=$(echo $OUTPUTS | jq -r '.[] | select(.OutputKey=="WebsiteURL") | .OutputValue')
+          API_URL=$(aws cloudformation describe-stacks --stack-name ${{ env.STACK_NAME }} --query "Stacks[0].Outputs[?OutputKey=='ApiUrl'].OutputValue" --output text)
+          BUCKET_NAME=$(aws cloudformation describe-stacks --stack-name ${{ env.STACK_NAME }} --query "Stacks[0].Outputs[?OutputKey=='UiBucketName'].OutputValue" --output text)
           
-          aws s3 sync ./web s3://$BUCKET_NAME --delete
-          echo "--------------------------------------------------"
-          echo "DEPLOYMENT SUCCESSFUL!"
-          echo "Your website is live at: $SITE_URL"
-          echo "--------------------------------------------------"
+          # Store these in GITHUB_ENV so following steps can use them
+          echo "VITE_API_URL=$API_URL" >> $GITHUB_ENV
+          echo "UI_BUCKET_NAME=$BUCKET_NAME" >> $GITHUB_ENV
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+          
+      - name: Install and Build Frontend
+        working-directory: ./frontend
+        run: |
+          npm install
+          # Vite will see VITE_API_URL from the environment and bake it into the dist
+          npm run build
+        env:
+          VITE_API_URL: ${{ env.VITE_API_URL }}
+      
+      - name: Sync to S3
+        run: |
+          aws s3 sync ./frontend/dist s3://${{ env.UI_BUCKET_NAME }} --delete
+          
   Cleanup:
     if: github.event.inputs.action == 'destroy'
     runs-on: ubuntu-latest

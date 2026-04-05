@@ -100,6 +100,9 @@ Resources:
                 Resource: "arn:aws:logs:*:*:*"
 
 Outputs:
+  ApiUrl:
+    Description: "API Gateway endpoint URL"
+    Value: !Sub "https://${MyApi}.execute-api.${AWS::Region}.amazonaws.com/"
   WebsiteURL:
     Value: !GetAtt UiBucket.WebsiteURL
     Description: "URL for the hosted UI"

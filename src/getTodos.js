@@ -16,11 +16,20 @@ exports.handler = async (event) => {
 
         return {
             statusCode: 200,
-            headers: { "Content-Type": "application/json" },
+            headers: {
+                "Content-Type": "application/json",
+                "Access-Control-Allow-Origin": "*", // <--- CRITICAL: Allows React to read the data
+                "Access-Control-Allow-Methods": "GET,OPTIONS",
+                "Access-Control-Allow-Headers": "Content-Type"
+            },
             body: JSON.stringify(data.Items),
         };
     } catch (err) {
         console.error(err);
-        return { statusCode: 500, body: JSON.stringify({ message: "Error" }) };
+        return {
+            statusCode: 500,
+            headers: { "Access-Control-Allow-Origin": "*" },
+            body: JSON.stringify({ message: "Error" })
+        };
     }
 };
