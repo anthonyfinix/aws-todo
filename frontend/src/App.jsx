@@ -7,6 +7,7 @@ function App() {
   const [task, setTask] = useState('');
   const [todos, setTodos] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [isAdding, setIsAdding] = useState(false);
 
   // 1. Fetching logic (DVA-C02: Asynchronous patterns)
   const fetchTodos = async () => {
