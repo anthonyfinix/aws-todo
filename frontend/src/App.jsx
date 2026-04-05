@@ -22,6 +22,32 @@ function App() {
     }
   };
 
+  const addTodo = async () => {
+    if (!task.trim()) return; // Don't add empty tasks
+
+    setIsAdding(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}todos`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        // We send 'name' because that's what your createTodo Lambda expects
+        body: JSON.stringify({ name: task }),
+      });
+
+      if (!response.ok) throw new Error('Failed to create todo');
+
+      setTask(''); // Clear the input
+      await fetchTodos(); // Refresh the list to show the new item
+    } catch (error) {
+      alert("Error adding task. Check your Lambda logs!");
+      console.error(error);
+    } finally {
+      setIsAdding(false);
+    }
+  };
+
   // 2. Trigger on Mount
   useEffect(() => {
     fetchTodos();
@@ -30,7 +56,7 @@ function App() {
   return (
     <div className="app-container">
       <h1>Todo Frontend</h1>
-      
+
       <div className="todo-box">
         <input
           type="text"
@@ -38,7 +64,12 @@ function App() {
           onChange={(e) => setTask(e.target.value)}
           placeholder="New task..."
         />
-        <button onClick={() => {/* We'll add POST logic next */}}>Add</button>
+        <button
+          onClick={addTodo}
+          disabled={isAdding || !task.trim()}
+        >
+          {isAdding ? 'Adding...' : 'Add'}
+        </button>
       </div>
 
       <div className="todo-list">
